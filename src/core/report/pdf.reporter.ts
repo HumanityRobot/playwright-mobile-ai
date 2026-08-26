@@ -1,1064 +1,1573 @@
 import fs from 'fs';
 import path from 'path';
+
 import PDFDocument from 'pdfkit';
 
-interface ExecutionSummary {
+export interface ExecutionSummary {
   passed: number;
   failed: number;
   skipped: number;
   total: number;
+
+  scenario: string;
+  tags: string[];
+  status:
+    | 'passed'
+    | 'failed'
+    | 'skipped'
+    | 'unknown';
+
+  screenshotPath: string;
 }
 
 export default function generatePdfReport(
   execution: ExecutionSummary
 ): Promise<void> {
-  const screenshotPath = path.resolve(
-    process.cwd(),
-    'reports',
-    'screenshots',
-    'LaunchApp_YukMulai.png'
-  );
+  const projectRoot =
+    process.cwd();
 
-  const outputDirectory = path.resolve(
-    process.cwd(),
-    'reports',
-    'pdf'
-  );
+  /*
+   * =====================================================
+   * DIRECTORIES
+   * =====================================================
+   */
 
-  fs.mkdirSync(outputDirectory, {
-    recursive: true,
-  });
+  const assetDirectory =
+    path.resolve(
+      projectRoot,
+      'assets',
+      'report'
+    );
 
-  const outputPath = path.join(
+  const logoDirectory =
+    path.join(
+      assetDirectory,
+      'logo'
+    );
+
+  const iconDirectory =
+    path.join(
+      assetDirectory,
+      'icons'
+    );
+
+  const outputDirectory =
+    path.resolve(
+      projectRoot,
+      'reports',
+      'pdf'
+    );
+
+  fs.mkdirSync(
     outputDirectory,
-    'LaunchApp_YukMulai.pdf'
+    {
+      recursive: true,
+    }
   );
 
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: 'A4',
-      margin: 50,
-    });
+  /*
+   * =====================================================
+   * ASSETS
+   * =====================================================
+   */
 
-    const chunks: Buffer[] = [];
+  const logoBluPath =
+    path.join(
+      logoDirectory,
+      'logo-blu.png'
+    );
 
-    doc.on('data', (chunk: Buffer) => {
-      chunks.push(Buffer.from(chunk));
-    });
+  const androidIconPath =
+    path.join(
+      iconDirectory,
+      'android-icon.png'
+    );
 
-    doc.on('end', () => {
-      try {
-        const pdfBuffer = Buffer.concat(
-          chunks
-        );
+  const appiumIconPath =
+    path.join(
+      iconDirectory,
+      'appium-icon.png'
+    );
 
-        fs.writeFileSync(
-          outputPath,
-          pdfBuffer
-        );
+  const webdriverioIconPath =
+    path.join(
+      iconDirectory,
+      'webdriverio-icon.png'
+    );
 
-        console.log(
-          '[PDF REPORTER] PDF successfully written:',
-          outputPath
-        );
+  const iosIconPath =
+    path.join(
+      iconDirectory,
+      'ios-icon.png'
+    );
 
-        console.log(
-          '[PDF REPORTER] PDF size:',
-          pdfBuffer.length,
-          'bytes'
-        );
+  /*
+   * =====================================================
+   * OUTPUT
+   * =====================================================
+   */
 
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    doc.on('error', (error) => {
-      console.error(
-        '[PDF REPORTER] PDF generation error:',
-        error
+  const fileSafeScenario =
+    execution.scenario
+      .replace(
+        /[^a-zA-Z0-9-_ ]/g,
+        ''
+      )
+      .trim()
+      .replace(
+        /\s+/g,
+        '_'
       );
 
-      reject(error);
-    });
+  const reportId =
+    execution.tags.length > 0
+      ? execution.tags[0].replace(
+          /^@/,
+          ''
+        )
+      : fileSafeScenario ||
+        'test-report';
 
-    // =====================================================
-    // THEME
-    // =====================================================
+  const outputPath =
+    path.join(
+      outputDirectory,
+      `${reportId}.pdf`
+    );
 
-    const COLORS = {
-      dark: '#111827',
-      text: '#1F2937',
-      gray: '#6B7280',
-      lightGray: '#E5E7EB',
-      background: '#F8FAFC',
-      white: '#FFFFFF',
+  /*
+   * =====================================================
+   * PDF
+   * =====================================================
+   */
 
-      blue: '#2563EB',
-      blueLight: '#EFF6FF',
+  return new Promise(
+    (resolve, reject) => {
+      const doc =
+        new PDFDocument({
+          size: 'A4',
+          margin: 50,
+          bufferPages: true,
+          info: {
+            Title:
+              'Blu Mobile Automation Test Report',
+            Author:
+              'blu Mobile Automation Framework',
+            Subject:
+              'Automated Test Execution Report',
+          },
+        });
 
-      green: '#16A34A',
-      greenLight: '#F0FDF4',
+      const chunks: Buffer[] = [];
 
-      red: '#DC2626',
-      redLight: '#FEF2F2',
+      doc.on(
+        'data',
+        (chunk: Buffer) => {
+          chunks.push(
+            Buffer.from(chunk)
+          );
+        }
+      );
 
-      yellow: '#D97706',
-      yellowLight: '#FFFBEB',
-    };
+      doc.on(
+        'error',
+        (error) => {
+          reject(error);
+        }
+      );
 
-    // =====================================================
-    // HELPERS
-    // =====================================================
+      doc.on(
+        'end',
+        () => {
+          try {
+            const pdfBuffer =
+              Buffer.concat(
+                chunks
+              );
 
-    function drawCard(
-      x: number,
-      y: number,
-      width: number,
-      height: number
-    ): void {
-      doc
-        .roundedRect(
+            fs.writeFileSync(
+              outputPath,
+              pdfBuffer
+            );
+
+            console.log(
+              '[PDF REPORTER] PDF successfully written:',
+              outputPath
+            );
+
+            console.log(
+              '[PDF REPORTER] PDF size:',
+              pdfBuffer.length,
+              'bytes'
+            );
+
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        }
+      );
+
+      /*
+       * =================================================
+       * THEME
+       * =================================================
+       */
+
+      const COLORS = {
+        dark: '#111827',
+        text: '#1F2937',
+        gray: '#6B7280',
+        gray2: '#9CA3AF',
+        border: '#E5E7EB',
+        background: '#F8FAFC',
+        white: '#FFFFFF',
+
+        blue: '#2563EB',
+        blueLight: '#EFF6FF',
+
+        green: '#16A34A',
+        greenLight: '#F0FDF4',
+
+        red: '#DC2626',
+        redLight: '#FEF2F2',
+
+        yellow: '#D97706',
+        yellowLight: '#FFFBEB',
+      };
+
+      /*
+       * =================================================
+       * HELPERS
+       * =================================================
+       */
+
+      function assetExists(
+        filePath: string
+      ): boolean {
+        return fs.existsSync(
+          filePath
+        );
+      }
+
+      function drawCard(
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        fill =
+          COLORS.white
+      ): void {
+        doc
+          .roundedRect(
+            x,
+            y,
+            width,
+            height,
+            10
+          )
+          .lineWidth(1)
+          .strokeColor(
+            COLORS.border
+          )
+          .fillColor(fill)
+          .fillAndStroke();
+      }
+
+      function drawMetricCard(
+        x: number,
+        y: number,
+        width: number,
+        title: string,
+        value: string,
+        color: string
+      ): void {
+        drawCard(
           x,
           y,
           width,
-          height,
-          10
-        )
-        .lineWidth(1)
-        .strokeColor(
-          COLORS.lightGray
-        )
-        .fillColor(COLORS.white)
-        .fillAndStroke();
-    }
-
-    function drawMetricCard(
-      x: number,
-      y: number,
-      width: number,
-      title: string,
-      value: string,
-      color: string
-    ): void {
-      drawCard(
-        x,
-        y,
-        width,
-        75
-      );
-
-      doc
-        .fontSize(8)
-        .font('Helvetica-Bold')
-        .fillColor(COLORS.gray)
-        .text(
-          title.toUpperCase(),
-          x + 15,
-          y + 14
-        );
-
-      doc
-        .fontSize(22)
-        .font('Helvetica-Bold')
-        .fillColor(color)
-        .text(
-          value,
-          x + 15,
-          y + 32
-        );
-    }
-
-    /*
-     * Draw a donut without using PDFKit arc().
-     *
-     * The ring is composed from many short line segments.
-     * This makes it compatible with the current PDFKit
-     * version and still gives us a smooth-looking donut.
-     */
-    function drawDonut(
-      centerX: number,
-      centerY: number,
-      radius: number,
-      lineWidth: number
-    ): void {
-      const total =
-        execution.passed +
-        execution.failed +
-        execution.skipped;
-
-      const safeTotal =
-        total > 0 ? total : 1;
-
-      const segments = [
-        {
-          value: execution.passed,
-          color: COLORS.green,
-        },
-        {
-          value: execution.failed,
-          color: COLORS.red,
-        },
-        {
-          value: execution.skipped,
-          color: COLORS.yellow,
-        },
-      ];
-
-      /*
-       * Background ring
-       */
-      doc
-        .lineWidth(lineWidth)
-        .strokeColor(
-          COLORS.lightGray
-        )
-        .circle(
-          centerX,
-          centerY,
-          radius
-        )
-        .stroke();
-
-      /*
-       * Draw colored portions as many small
-       * line segments around the circle.
-       */
-      const steps = 180;
-
-      let accumulated = 0;
-
-      for (const segment of segments) {
-        if (segment.value <= 0) {
-          continue;
-        }
-
-        const startRatio =
-          accumulated / safeTotal;
-
-        const endRatio =
-          (accumulated +
-            segment.value) /
-          safeTotal;
-
-        const startStep = Math.floor(
-          startRatio * steps
-        );
-
-        const endStep = Math.floor(
-          endRatio * steps
+          78
         );
 
         doc
-          .lineWidth(lineWidth)
-          .strokeColor(
-            segment.color
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(8)
+          .fillColor(
+            COLORS.gray
+          )
+          .text(
+            title.toUpperCase(),
+            x + 15,
+            y + 14
           );
 
-        for (
-          let step = startStep;
-          step < endStep;
-          step++
-        ) {
-          const startAngle =
-            -Math.PI / 2 +
-            (step / steps) *
-              Math.PI *
-              2;
-
-          const endAngle =
-            -Math.PI / 2 +
-            ((step + 1) / steps) *
-              Math.PI *
-              2;
-
-          const x1 =
-            centerX +
-            radius *
-              Math.cos(startAngle);
-
-          const y1 =
-            centerY +
-            radius *
-              Math.sin(startAngle);
-
-          const x2 =
-            centerX +
-            radius *
-              Math.cos(endAngle);
-
-          const y2 =
-            centerY +
-            radius *
-              Math.sin(endAngle);
-
-          doc
-            .moveTo(x1, y1)
-            .lineTo(x2, y2)
-            .stroke();
-        }
-
-        accumulated +=
-          segment.value;
+        doc
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(24)
+          .fillColor(color)
+          .text(
+            value,
+            x + 15,
+            y + 34
+          );
       }
 
       /*
-       * White center to turn the circle
-       * into a donut.
+       * =================================================
+       * DONUT
+       * =================================================
+       *
+       * No PDFKit arc().
+       * The ring is constructed from line segments.
        */
-      doc
-        .circle(
-          centerX,
-          centerY,
-          radius - lineWidth
-        )
-        .fillColor(
-          COLORS.white
-        )
-        .fill();
 
-      const passRate =
-        total === 0
-          ? 0
-          : Math.round(
-              (execution.passed /
-                total) *
-                100
+      function drawDonut(
+        centerX: number,
+        centerY: number,
+        radius: number,
+        lineWidth: number
+      ): void {
+        const total =
+          execution.passed +
+          execution.failed +
+          execution.skipped;
+
+        const safeTotal =
+          total > 0
+            ? total
+            : 1;
+
+        /*
+         * Background ring
+         */
+        doc
+          .lineWidth(lineWidth)
+          .strokeColor(
+            COLORS.border
+          )
+          .circle(
+            centerX,
+            centerY,
+            radius
+          )
+          .stroke();
+
+        const segments = [
+          {
+            value:
+              execution.passed,
+            color:
+              COLORS.green,
+          },
+          {
+            value:
+              execution.failed,
+            color:
+              COLORS.red,
+          },
+          {
+            value:
+              execution.skipped,
+            color:
+              COLORS.yellow,
+          },
+        ];
+
+        const steps = 180;
+
+        let accumulated = 0;
+
+        for (
+          const segment of segments
+        ) {
+          if (
+            segment.value <= 0
+          ) {
+            continue;
+          }
+
+          const startRatio =
+            accumulated /
+            safeTotal;
+
+          const endRatio =
+            (accumulated +
+              segment.value) /
+            safeTotal;
+
+          const startStep =
+            Math.floor(
+              startRatio *
+                steps
             );
 
-      doc
-        .fontSize(23)
-        .font('Helvetica-Bold')
-        .fillColor(
-          COLORS.dark
-        )
-        .text(
-          `${passRate}%`,
-          centerX - 45,
-          centerY - 13,
-          {
-            width: 90,
-            align: 'center',
+          const endStep =
+            Math.floor(
+              endRatio *
+                steps
+            );
+
+          doc
+            .lineWidth(
+              lineWidth
+            )
+            .strokeColor(
+              segment.color
+            );
+
+          for (
+            let step =
+              startStep;
+            step <
+              endStep;
+            step++
+          ) {
+            const startAngle =
+              -Math.PI / 2 +
+              (step / steps) *
+                Math.PI *
+                2;
+
+            const endAngle =
+              -Math.PI / 2 +
+              ((step + 1) /
+                steps) *
+                Math.PI *
+                2;
+
+            const x1 =
+              centerX +
+              radius *
+                Math.cos(
+                  startAngle
+                );
+
+            const y1 =
+              centerY +
+              radius *
+                Math.sin(
+                  startAngle
+                );
+
+            const x2 =
+              centerX +
+              radius *
+                Math.cos(
+                  endAngle
+                );
+
+            const y2 =
+              centerY +
+              radius *
+                Math.sin(
+                  endAngle
+                );
+
+            doc
+              .moveTo(
+                x1,
+                y1
+              )
+              .lineTo(
+                x2,
+                y2
+              )
+              .stroke();
           }
-        );
 
-      doc
-        .fontSize(8)
-        .font('Helvetica-Bold')
-        .fillColor(
-          COLORS.gray
-        )
-        .text(
-          'PASS RATE',
-          centerX - 45,
-          centerY + 15,
-          {
-            width: 90,
-            align: 'center',
-          }
-        );
-    }
+          accumulated +=
+            segment.value;
+        }
 
-    function drawBar(
-      label: string,
-      value: number,
-      maxValue: number,
-      y: number,
-      color: string
-    ): void {
-      const labelX = 335;
-      const barX = 400;
-      const barWidth = 105;
-      const barHeight = 12;
+        /*
+         * White center
+         */
+        doc
+          .circle(
+            centerX,
+            centerY,
+            radius -
+              lineWidth
+          )
+          .fillColor(
+            COLORS.white
+          )
+          .fill();
 
-      doc
-        .fontSize(8)
-        .font('Helvetica-Bold')
-        .fillColor(
-          COLORS.text
-        )
-        .text(
-          label,
-          labelX,
-          y + 1,
-          {
-            width: 55,
-          }
-        );
+        const passRate =
+          total === 0
+            ? 0
+            : Math.round(
+                (execution.passed /
+                  total) *
+                  100
+              );
 
-      doc
-        .roundedRect(
-          barX,
-          y,
-          barWidth,
-          barHeight,
-          5
-        )
-        .fillColor(
-          '#F3F4F6'
-        )
-        .fill();
+        doc
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(23)
+          .fillColor(
+            COLORS.dark
+          )
+          .text(
+            `${passRate}%`,
+            centerX - 45,
+            centerY - 15,
+            {
+              width: 90,
+              align: 'center',
+            }
+          );
 
-      if (
-        value > 0 &&
-        maxValue > 0
-      ) {
-        const calculatedWidth =
-          (value / maxValue) *
-          barWidth;
+        doc
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(7)
+          .fillColor(
+            COLORS.gray
+          )
+          .text(
+            'PASS RATE',
+            centerX - 45,
+            centerY + 15,
+            {
+              width: 90,
+              align: 'center',
+            }
+          );
+      }
+
+      /*
+       * =================================================
+       * BAR
+       * =================================================
+       */
+
+      function drawBar(
+        label: string,
+        value: number,
+        maxValue: number,
+        y: number,
+        color: string
+      ): void {
+        const labelX =
+          315;
+
+        const barX =
+          390;
+
+        const barWidth =
+          105;
+
+        const barHeight =
+          12;
+
+        doc
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(8)
+          .fillColor(
+            COLORS.text
+          )
+          .text(
+            label,
+            labelX,
+            y + 1,
+            {
+              width: 60,
+            }
+          );
 
         doc
           .roundedRect(
             barX,
             y,
-            calculatedWidth,
+            barWidth,
             barHeight,
             5
           )
-          .fillColor(color)
+          .fillColor(
+            '#F3F4F6'
+          )
           .fill();
-      }
 
-      doc
-        .fontSize(8)
-        .font('Helvetica-Bold')
-        .fillColor(
-          COLORS.text
-        )
-        .text(
-          String(value),
-          barX + barWidth + 10,
-          y + 1
-        );
-    }
+        if (
+          value > 0 &&
+          maxValue > 0
+        ) {
+          const width =
+            (value /
+              maxValue) *
+            barWidth;
 
-    function drawFooter(
-      pageNumber: number
-    ): void {
-      doc
-        .fontSize(7)
-        .font('Helvetica')
-        .fillColor(
-          COLORS.gray
-        )
-        .text(
-          'Generated by blu Mobile Automation Framework',
-          50,
-          770,
-          {
-            width: 400,
-          }
-        );
-
-      doc
-        .fontSize(7)
-        .font('Helvetica')
-        .fillColor(
-          COLORS.gray
-        )
-        .text(
-          `Page ${pageNumber}`,
-          495,
-          770,
-          {
-            width: 50,
-            align: 'right',
-          }
-        );
-    }
-
-    // =====================================================
-    // PAGE 1
-    // =====================================================
-
-    doc
-      .fillColor(
-        COLORS.blue
-      )
-      .fontSize(9)
-      .font('Helvetica-Bold')
-      .text(
-        'BLU MOBILE AUTOMATION',
-        50,
-        45
-      );
-
-    doc
-      .fillColor(
-        COLORS.gray
-      )
-      .fontSize(8)
-      .font('Helvetica')
-      .text(
-        new Date().toLocaleDateString(
-          'en-GB'
-        ),
-        450,
-        45,
-        {
-          width: 95,
-          align: 'right',
+          doc
+            .roundedRect(
+              barX,
+              y,
+              width,
+              barHeight,
+              5
+            )
+            .fillColor(
+              color
+            )
+            .fill();
         }
-      );
-
-    doc
-      .fillColor(
-        COLORS.dark
-      )
-      .fontSize(26)
-      .font('Helvetica-Bold')
-      .text(
-        'TEST EXECUTION',
-        50,
-        85
-      );
-
-    doc
-      .fillColor(
-        COLORS.blue
-      )
-      .fontSize(26)
-      .font('Helvetica-Bold')
-      .text(
-        'REPORT',
-        50,
-        115
-      );
-
-    doc
-      .fillColor(
-        COLORS.gray
-      )
-      .fontSize(10)
-      .font('Helvetica')
-      .text(
-        'Automated mobile test execution summary',
-        50,
-        150
-      );
-
-    // =====================================================
-    // TEST SCENARIO CARD
-    // =====================================================
-
-    drawCard(
-      50,
-      185,
-      495,
-      85
-    );
-
-    doc
-      .fontSize(7)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.gray
-      )
-      .text(
-        'TEST SCENARIO',
-        70,
-        202
-      );
-
-    doc
-      .fontSize(12)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.dark
-      )
-      .text(
-        'Launch blu application - click Yuk Mulai!',
-        70,
-        218,
-        {
-          width: 390,
-        }
-      );
-
-    const scenarioPassed =
-      execution.failed === 0 &&
-      execution.passed > 0;
-
-    doc
-      .fontSize(8)
-      .font('Helvetica-Bold')
-      .fillColor(
-        scenarioPassed
-          ? COLORS.green
-          : COLORS.red
-      )
-      .text(
-        scenarioPassed
-          ? 'PASSED'
-          : 'FAILED',
-        70,
-        245
-      );
-
-    // =====================================================
-    // METRICS
-    // =====================================================
-
-    const metricY = 295;
-    const metricWidth = 153;
-    const gap = 18;
-
-    drawMetricCard(
-      50,
-      metricY,
-      metricWidth,
-      'Total',
-      String(
-        execution.total
-      ),
-      COLORS.blue
-    );
-
-    drawMetricCard(
-      50 +
-        metricWidth +
-        gap,
-      metricY,
-      metricWidth,
-      'Passed',
-      String(
-        execution.passed
-      ),
-      COLORS.green
-    );
-
-    drawMetricCard(
-      50 +
-        (metricWidth +
-          gap) *
-          2,
-      metricY,
-      metricWidth,
-      'Failed',
-      String(
-        execution.failed
-      ),
-      COLORS.red
-    );
-
-    // =====================================================
-    // EXECUTION SUMMARY
-    // =====================================================
-
-    doc
-      .fontSize(14)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.dark
-      )
-      .text(
-        'EXECUTION SUMMARY',
-        50,
-        395
-      );
-
-    drawCard(
-      50,
-      420,
-      495,
-      185
-    );
-
-    /*
-     * Donut
-     */
-    drawDonut(
-      170,
-      510,
-      58,
-      18
-    );
-
-    /*
-     * Breakdown
-     */
-    doc
-      .fontSize(11)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.dark
-      )
-      .text(
-        'EXECUTION BREAKDOWN',
-        315,
-        450
-      );
-
-    const maxValue =
-      Math.max(
-        execution.passed,
-        execution.failed,
-        execution.skipped,
-        1
-      );
-
-    drawBar(
-      'Passed',
-      execution.passed,
-      maxValue,
-      485,
-      COLORS.green
-    );
-
-    drawBar(
-      'Failed',
-      execution.failed,
-      maxValue,
-      520,
-      COLORS.red
-    );
-
-    drawBar(
-      'Skipped',
-      execution.skipped,
-      maxValue,
-      555,
-      COLORS.yellow
-    );
-
-    /*
-     * Summary labels
-     */
-    doc
-      .fontSize(8)
-      .font('Helvetica')
-      .fillColor(
-        COLORS.gray
-      )
-      .text(
-        `${execution.passed} Passed   •   ${execution.failed} Failed   •   ${execution.skipped} Skipped`,
-        315,
-        585,
-        {
-          width: 190,
-        }
-      );
-
-    // =====================================================
-    // ENVIRONMENT
-    // =====================================================
-
-    doc
-      .fontSize(13)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.dark
-      )
-      .text(
-        'EXECUTION ENVIRONMENT',
-        50,
-        635
-      );
-
-    const metadata = [
-      [
-        'Platform',
-        'Android',
-      ],
-      [
-        'Environment',
-        'blu UAT',
-      ],
-      [
-        'Automation',
-        'Playwright + WebdriverIO',
-      ],
-      [
-        'Driver',
-        'Appium 2',
-      ],
-    ];
-
-    metadata.forEach(
-      ([label, value], index) => {
-        const y =
-          660 +
-          index * 20;
 
         doc
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(8)
+          .fillColor(
+            COLORS.text
+          )
+          .text(
+            String(value),
+            barX +
+              barWidth +
+              10,
+            y + 1
+          );
+      }
+
+      /*
+       * =================================================
+       * TECHNOLOGY ITEM
+       * =================================================
+       */
+
+      function drawTechnology(
+        x: number,
+        y: number,
+        iconPath: string,
+        label: string,
+        value: string
+      ): void {
+        drawCard(
+          x,
+          y,
+          112,
+          72
+        );
+
+        if (
+          assetExists(iconPath)
+        ) {
+          doc.image(
+            iconPath,
+            x + 12,
+            y + 14,
+            {
+              fit: [
+                28,
+                28,
+              ],
+            }
+          );
+        }
+
+        doc
+          .font(
+            'Helvetica-Bold'
+          )
           .fontSize(7)
-          .font('Helvetica-Bold')
           .fillColor(
             COLORS.gray
           )
           .text(
             label.toUpperCase(),
-            50,
-            y
+            x + 48,
+            y + 17,
+            {
+              width: 55,
+            }
           );
 
         doc
+          .font(
+            'Helvetica-Bold'
+          )
           .fontSize(8)
-          .font('Helvetica')
           .fillColor(
             COLORS.text
           )
           .text(
             value,
-            180,
-            y
+            x + 48,
+            y + 32,
+            {
+              width: 55,
+            }
           );
       }
-    );
 
-    drawFooter(1);
+      /*
+       * =================================================
+       * FOOTER
+       * =================================================
+       */
 
-    // =====================================================
-    // PAGE 2 — TEST EVIDENCE
-    // =====================================================
+      function drawFooter(
+        pageNumber: number
+      ): void {
+        doc
+          .font(
+            'Helvetica'
+          )
+          .fontSize(7)
+          .fillColor(
+            COLORS.gray
+          )
+          .text(
+            'Generated by blu Mobile Automation Framework',
+            50,
+            770,
+            {
+              width: 390,
+            }
+          );
 
-    doc.addPage();
+        doc
+          .font(
+            'Helvetica'
+          )
+          .fontSize(7)
+          .fillColor(
+            COLORS.gray
+          )
+          .text(
+            `Page ${pageNumber}`,
+            495,
+            770,
+            {
+              width: 50,
+              align: 'right',
+            }
+          );
+      }
 
-    doc
-      .fillColor(
-        COLORS.dark
-      )
-      .fontSize(21)
-      .font('Helvetica-Bold')
-      .text(
-        'TEST EVIDENCE',
-        50,
-        55
-      );
+      /*
+       * =================================================
+       * PAGE 1
+       * =================================================
+       */
 
-    doc
-      .fillColor(
-        COLORS.gray
-      )
-      .fontSize(9)
-      .font('Helvetica')
-      .text(
-        'Visual evidence captured during execution',
-        50,
-        85
-      );
+      /*
+       * HEADER
+       */
 
-    drawCard(
-      50,
-      115,
-      495,
-      610
-    );
-
-    doc
-      .fontSize(11)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.dark
-      )
-      .text(
-        'STEP 01',
-        75,
-        140
-      );
-
-    doc
-      .fontSize(10)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.text
-      )
-      .text(
-        'Click "Yuk Mulai!"',
-        75,
-        160
-      );
-
-    doc
-      .fontSize(8)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.green
-      )
-      .text(
-        'PASS',
-        75,
-        183
-      );
-
-    if (
-      fs.existsSync(
-        screenshotPath
-      )
-    ) {
-      console.log(
-        '[PDF REPORTER] Reading screenshot:',
-        screenshotPath
-      );
-
-      const screenshotBuffer =
-        fs.readFileSync(
-          screenshotPath
+      if (
+        assetExists(
+          logoBluPath
+        )
+      ) {
+        doc.image(
+          logoBluPath,
+          50,
+          40,
+          {
+            fit: [
+              65,
+              35,
+            ],
+          }
         );
+      } else {
+        doc
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(12)
+          .fillColor(
+            COLORS.blue
+          )
+          .text(
+            'blu',
+            50,
+            50
+          );
+      }
 
-      console.log(
-        '[PDF REPORTER] Screenshot size:',
-        screenshotBuffer.length,
-        'bytes'
-      );
-
-      doc.image(
-        screenshotBuffer,
-        125,
-        215,
-        {
-          fit: [
-            345,
-            490,
-          ],
-          align: 'center',
-        }
-      );
-    } else {
       doc
-        .fontSize(10)
-        .font('Helvetica')
+        .font(
+          'Helvetica'
+        )
+        .fontSize(8)
         .fillColor(
           COLORS.gray
         )
         .text(
-          'Screenshot evidence not found.',
-          75,
-          220
+          new Date().toLocaleDateString(
+            'en-GB'
+          ),
+          450,
+          50,
+          {
+            width: 95,
+            align: 'right',
+          }
         );
+
+      /*
+       * TITLE
+       */
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(26)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'TEST EXECUTION',
+          50,
+          100
+        );
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(26)
+        .fillColor(
+          COLORS.blue
+        )
+        .text(
+          'REPORT',
+          50,
+          130
+        );
+
+      doc
+        .font(
+          'Helvetica'
+        )
+        .fontSize(10)
+        .fillColor(
+          COLORS.gray
+        )
+        .text(
+          'Automated mobile test execution summary',
+          50,
+          168
+        );
+
+      /*
+       * SCENARIO
+       */
+
+      drawCard(
+        50,
+        205,
+        495,
+        95
+      );
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(7)
+        .fillColor(
+          COLORS.gray
+        )
+        .text(
+          'TEST SCENARIO',
+          70,
+          222
+        );
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(12)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          execution.scenario ||
+            'Unknown Scenario',
+          70,
+          239,
+          {
+            width: 390,
+          }
+        );
+
+      const statusPassed =
+        execution.status ===
+        'passed';
+
+      doc
+        .roundedRect(
+          70,
+          264,
+          65,
+          18,
+          9
+        )
+        .fillColor(
+          statusPassed
+            ? COLORS.greenLight
+            : COLORS.redLight
+        )
+        .fill();
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(7)
+        .fillColor(
+          statusPassed
+            ? COLORS.green
+            : COLORS.red
+        )
+        .text(
+          statusPassed
+            ? 'PASSED'
+            : 'FAILED',
+          70,
+          270,
+          {
+            width: 65,
+            align: 'center',
+          }
+        );
+
+      /*
+       * TAGS
+       */
+
+      if (
+        execution.tags.length >
+        0
+      ) {
+        doc
+          .font(
+            'Helvetica'
+          )
+          .fontSize(8)
+          .fillColor(
+            COLORS.gray
+          )
+          .text(
+            execution.tags.join(
+              '   '
+            ),
+            155,
+            269
+          );
+      }
+
+      /*
+       * METRICS
+       */
+
+      const metricY =
+        325;
+
+      const metricWidth =
+        153;
+
+      const gap =
+        18;
+
+      drawMetricCard(
+        50,
+        metricY,
+        metricWidth,
+        'Total',
+        String(
+          execution.total
+        ),
+        COLORS.blue
+      );
+
+      drawMetricCard(
+        50 +
+          metricWidth +
+          gap,
+        metricY,
+        metricWidth,
+        'Passed',
+        String(
+          execution.passed
+        ),
+        COLORS.green
+      );
+
+      drawMetricCard(
+        50 +
+          (metricWidth +
+            gap) *
+            2,
+        metricY,
+        metricWidth,
+        'Failed',
+        String(
+          execution.failed
+        ),
+        COLORS.red
+      );
+
+      /*
+       * SUMMARY
+       */
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(14)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'EXECUTION SUMMARY',
+          50,
+          425
+        );
+
+      drawCard(
+        50,
+        450,
+        495,
+        180
+      );
+
+      drawDonut(
+        165,
+        540,
+        57,
+        18
+      );
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(10)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'RESULT BREAKDOWN',
+          315,
+          480
+        );
+
+      const maxValue =
+        Math.max(
+          execution.passed,
+          execution.failed,
+          execution.skipped,
+          1
+        );
+
+      drawBar(
+        'Passed',
+        execution.passed,
+        maxValue,
+        515,
+        COLORS.green
+      );
+
+      drawBar(
+        'Failed',
+        execution.failed,
+        maxValue,
+        550,
+        COLORS.red
+      );
+
+      drawBar(
+        'Skipped',
+        execution.skipped,
+        maxValue,
+        585,
+        COLORS.yellow
+      );
+
+      /*
+       * ENVIRONMENT
+       */
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(13)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'EXECUTION ENVIRONMENT',
+          50,
+          660
+        );
+
+      drawTechnology(
+        50,
+        690,
+        androidIconPath,
+        'Platform',
+        'Android'
+      );
+
+      drawTechnology(
+        178,
+        690,
+        logoBluPath,
+        'Environment',
+        'blu UAT'
+      );
+
+      drawTechnology(
+        306,
+        690,
+        webdriverioIconPath,
+        'Automation',
+        'WebdriverIO'
+      );
+
+      drawTechnology(
+        434,
+        690,
+        appiumIconPath,
+        'Driver',
+        'Appium 2'
+      );
+
+      drawFooter(1);
+
+      /*
+       * =================================================
+       * PAGE 2
+       * =================================================
+       */
+
+      doc.addPage();
+
+      if (
+        assetExists(
+          logoBluPath
+        )
+      ) {
+        doc.image(
+          logoBluPath,
+          50,
+          40,
+          {
+            fit: [
+              65,
+              35,
+            ],
+          }
+        );
+      }
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(21)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'TEST EVIDENCE',
+          50,
+          100
+        );
+
+      doc
+        .font(
+          'Helvetica'
+        )
+        .fontSize(9)
+        .fillColor(
+          COLORS.gray
+        )
+        .text(
+          'Visual evidence captured during execution',
+          50,
+          130
+        );
+
+      drawCard(
+        50,
+        160,
+        495,
+        565
+      );
+
+      /*
+       * STEP HEADER
+       */
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(8)
+        .fillColor(
+          COLORS.gray
+        )
+        .text(
+          'STEP 01',
+          75,
+          185
+        );
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(11)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'Click "Yuk Mulai!"',
+          75,
+          202
+        );
+
+      doc
+        .roundedRect(
+          75,
+          225,
+          55,
+          18,
+          9
+        )
+        .fillColor(
+          COLORS.greenLight
+        )
+        .fill();
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(7)
+        .fillColor(
+          COLORS.green
+        )
+        .text(
+          'PASS',
+          75,
+          231,
+          {
+            width: 55,
+            align: 'center',
+          }
+        );
+
+      /*
+       * SCREENSHOT
+       */
+
+      if (
+        assetExists(
+          execution.screenshotPath
+        )
+      ) {
+        console.log(
+          '[PDF REPORTER] Reading screenshot:',
+          execution.screenshotPath
+        );
+
+        const screenshotBuffer =
+          fs.readFileSync(
+            execution.screenshotPath
+          );
+
+        console.log(
+          '[PDF REPORTER] Screenshot size:',
+          screenshotBuffer.length,
+          'bytes'
+        );
+
+        doc.image(
+          screenshotBuffer,
+          110,
+          265,
+          {
+            fit: [
+              100,
+              150,
+            ],
+            align: 'center',
+          }
+        );
+      } else {
+        doc
+          .font(
+            'Helvetica'
+          )
+          .fontSize(10)
+          .fillColor(
+            COLORS.gray
+          )
+          .text(
+            'Screenshot evidence not found.',
+            75,
+            285
+          );
+      }
+
+      drawFooter(2);
+
+      /*
+       * =================================================
+       * PAGE 3
+       * =================================================
+       */
+
+      doc.addPage();
+
+      if (
+        assetExists(
+          logoBluPath
+        )
+      ) {
+        doc.image(
+          logoBluPath,
+          50,
+          40,
+          {
+            fit: [
+              65,
+              35,
+            ],
+          }
+        );
+      }
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(21)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'EXECUTION ASSESSMENT',
+          50,
+          100
+        );
+
+      doc
+        .font(
+          'Helvetica'
+        )
+        .fontSize(9)
+        .fillColor(
+          COLORS.gray
+        )
+        .text(
+          'Human-readable execution summary',
+          50,
+          130
+        );
+
+      /*
+       * RESULT CARD
+       */
+
+      drawCard(
+        50,
+        165,
+        495,
+        180
+      );
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(11)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          execution.status ===
+            'passed'
+            ? 'Execution completed successfully'
+            : 'Execution requires attention',
+          75,
+          195
+        );
+
+      const assessment =
+        execution.status ===
+        'passed'
+          ? 'The smoke test completed successfully. The blu UAT application was launched through the Appium 2 mobile fixture, the configured Android object repository locator was resolved successfully, and the "Yuk Mulai!" interaction completed without failure.'
+          : 'The test execution did not complete successfully. Review the execution evidence and Playwright HTML report for detailed diagnostics.';
+
+      doc
+        .font(
+          'Helvetica'
+        )
+        .fontSize(10)
+        .fillColor(
+          COLORS.text
+        )
+        .text(
+          assessment,
+          75,
+          230,
+          {
+            width: 445,
+            lineGap: 6,
+          }
+        );
+
+      /*
+       * PHASE COVERAGE
+       */
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(13)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'CURRENT PHASE 1 COVERAGE',
+          50,
+          395
+        );
+
+      doc
+        .font(
+          'Helvetica'
+        )
+        .fontSize(10)
+        .fillColor(
+          COLORS.gray
+        )
+        .text(
+          'The current smoke test validates that Playwright can create the mobile fixture, connect through WebdriverIO to Appium 2, launch the blu UAT application, resolve the configured Android object repository locator, and execute the initial "Yuk Mulai!" interaction.',
+          50,
+          425,
+          {
+            width: 495,
+            lineGap: 5,
+          }
+        );
+
+      /*
+       * STACK
+       */
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(13)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'AUTOMATION STACK',
+          50,
+          520
+        );
+
+      drawTechnology(
+        50,
+        550,
+        androidIconPath,
+        'Platform',
+        'Android'
+      );
+
+      drawTechnology(
+        178,
+        550,
+        webdriverioIconPath,
+        'Automation',
+        'WebdriverIO'
+      );
+
+      drawTechnology(
+        306,
+        550,
+        appiumIconPath,
+        'Driver',
+        'Appium 2'
+      );
+
+      drawTechnology(
+        434,
+        550,
+        iosIconPath,
+        'Ready For',
+        'iOS'
+      );
+
+      /*
+       * REPORTING
+       */
+
+      doc
+        .font(
+          'Helvetica-Bold'
+        )
+        .fontSize(13)
+        .fillColor(
+          COLORS.dark
+        )
+        .text(
+          'REPORTING DIRECTION',
+          50,
+          655
+        );
+
+      doc
+        .font(
+          'Helvetica'
+        )
+        .fontSize(9)
+        .fillColor(
+          COLORS.gray
+        )
+        .text(
+          'This PDF provides the human-readable execution summary. The Playwright HTML report remains the detailed technical report for debugging, traces and test-level diagnostics.',
+          50,
+          685,
+          {
+            width: 495,
+            lineGap: 5,
+          }
+        );
+
+      drawFooter(3);
+
+      /*
+       * =================================================
+       * FINALIZE
+       * =================================================
+       */
+
+      doc.end();
     }
-
-    drawFooter(2);
-
-    // =====================================================
-    // PAGE 3 — ASSESSMENT
-    // =====================================================
-
-    doc.addPage();
-
-    doc
-      .fillColor(
-        COLORS.dark
-      )
-      .fontSize(21)
-      .font('Helvetica-Bold')
-      .text(
-        'EXECUTION ASSESSMENT',
-        50,
-        55
-      );
-
-    doc
-      .fillColor(
-        COLORS.gray
-      )
-      .fontSize(9)
-      .font('Helvetica')
-      .text(
-        'Human-readable execution summary',
-        50,
-        85
-      );
-
-    drawCard(
-      50,
-      120,
-      495,
-      190
-    );
-
-    doc
-      .fillColor(
-        COLORS.dark
-      )
-      .fontSize(11)
-      .font('Helvetica')
-      .text(
-        'The smoke test completed successfully. ' +
-          'The blu UAT application was launched through ' +
-          'the Appium 2 mobile fixture, the configured Android ' +
-          'object repository locator was resolved successfully, ' +
-          'and the "Yuk Mulai!" interaction completed without ' +
-          'failure.',
-        75,
-        155,
-        {
-          width: 445,
-          lineGap: 6,
-        }
-      );
-
-    doc
-      .fontSize(13)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.dark
-      )
-      .text(
-        'CURRENT PHASE 1 COVERAGE',
-        50,
-        355
-      );
-
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor(
-        COLORS.gray
-      )
-      .text(
-        'The current smoke test validates that Playwright can ' +
-          'create the mobile fixture, connect through WebdriverIO ' +
-          'to Appium 2, launch the blu UAT application, resolve ' +
-          'the existing Android object repository locator, and ' +
-          'click the "Yuk Mulai!" button.',
-        50,
-        385,
-        {
-          width: 495,
-          lineGap: 5,
-        }
-      );
-
-    doc
-      .fontSize(13)
-      .font('Helvetica-Bold')
-      .fillColor(
-        COLORS.dark
-      )
-      .text(
-        'REPORTING DIRECTION',
-        50,
-        490
-      );
-
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor(
-        COLORS.gray
-      )
-      .text(
-        'This PDF is designed as the human-readable execution ' +
-          'summary. The Playwright HTML report remains the ' +
-          'detailed technical report for debugging. The final ' +
-          'automation framework can generate this PDF from actual ' +
-          'test execution data.',
-        50,
-        520,
-        {
-          width: 495,
-          lineGap: 5,
-        }
-      );
-
-    drawFooter(3);
-
-    // =====================================================
-    // FINALIZE
-    // =====================================================
-
-    doc.end();
-  });
+  );
 }

@@ -8,23 +8,22 @@ import type {
   FullResult,
 } from '@playwright/test/reporter';
 
-import generatePdfReport from './pdf.reporter';
-
-interface ExecutionSummary {
-  passed: number;
-  failed: number;
-  skipped: number;
-  total: number;
-}
+import generatePdfReport, {
+  type ExecutionSummary,
+} from './pdf.reporter';
 
 class PlaywrightReporter implements Reporter {
-  private shouldGeneratePdf = false;
-
   private execution: ExecutionSummary = {
     passed: 0,
     failed: 0,
     skipped: 0,
     total: 0,
+
+    scenario: '',
+    tags: [],
+    status: 'unknown',
+
+    screenshotPath: '',
   };
 
   onTestEnd(
@@ -43,30 +42,74 @@ class PlaywrightReporter implements Reporter {
     );
 
     /*
-     * Collect actual Playwright execution result
+     * Only generate PDF for the target scenario.
      */
+    if (
+      !test.title
+        .toLowerCase()
+        .includes('launch blu application')
+    ) {
+      return;
+    }
+
     this.execution.total++;
 
     if (result.status === 'passed') {
       this.execution.passed++;
-    } else if (
-      result.status === 'failed' ||
-      result.status === 'timedOut'
-    ) {
+    } else if (result.status === 'failed') {
       this.execution.failed++;
-    } else if (result.status === 'skipped') {
+    } else if (
+      result.status === 'skipped' ||
+      result.status === 'interrupted'
+    ) {
       this.execution.skipped++;
     }
 
     /*
-     * Current target scenario
+     * Scenario
      */
-    if (
-      test.title.includes(
-        'Launch blu application - click Yuk Mulai'
-      )
+    this.execution.scenario =
+      test.title;
+
+    /*
+     * Playwright tags
+     *
+     * We use a safe cast so this remains compatible
+     * with different Playwright type definitions.
+     */
+    const testWithTags =
+      test as TestCase & {
+        tags?: string[];
+      };
+
+    this.execution.tags =
+      testWithTags.tags ?? [];
+
+    /*
+     * Screenshot
+     */
+    this.execution.screenshotPath =
+      path.resolve(
+        process.cwd(),
+        'reports',
+        'screenshots',
+        'LaunchApp_YukMulai.png'
+      );
+
+    /*
+     * Current status
+     */
+    if (result.status === 'passed') {
+      this.execution.status =
+        'passed';
+    } else if (
+      result.status === 'failed'
     ) {
-      this.shouldGeneratePdf = true;
+      this.execution.status =
+        'failed';
+    } else {
+      this.execution.status =
+        'skipped';
     }
   }
 
@@ -83,12 +126,12 @@ class PlaywrightReporter implements Reporter {
       result.status
     );
 
-    console.log(
-      '[PDF REPORTER] Execution summary:',
-      this.execution
-    );
-
-    if (!this.shouldGeneratePdf) {
+    /*
+     * No target test
+     */
+    if (
+      this.execution.total === 0
+    ) {
       console.log(
         '[PDF REPORTER] No target test found. PDF skipped.'
       );
@@ -96,26 +139,30 @@ class PlaywrightReporter implements Reporter {
       return;
     }
 
-    const screenshotPath = path.resolve(
-      process.cwd(),
-      'reports',
-      'screenshots',
-      'LaunchApp_YukMulai.png'
-    );
-
-    if (!fs.existsSync(screenshotPath)) {
+    /*
+     * Screenshot check
+     */
+    if (
+      !fs.existsSync(
+        this.execution.screenshotPath
+      )
+    ) {
       console.log(
         '[PDF REPORTER] Screenshot not found:',
-        screenshotPath
+        this.execution.screenshotPath
       );
 
-      return;
+      /*
+       * We still generate the PDF.
+       * The evidence page will show
+       * "Screenshot not found".
+       */
+    } else {
+      console.log(
+        '[PDF REPORTER] Screenshot found:',
+        this.execution.screenshotPath
+      );
     }
-
-    console.log(
-      '[PDF REPORTER] Screenshot found:',
-      screenshotPath
-    );
 
     try {
       await generatePdfReport(
