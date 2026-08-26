@@ -11,13 +11,14 @@ export interface ExecutionSummary {
 
   scenario: string;
   tags: string[];
+
   status:
     | 'passed'
     | 'failed'
     | 'skipped'
     | 'unknown';
 
-  screenshotPath: string;
+  screenshots: string[];
 }
 
 export default function generatePdfReport(
@@ -141,7 +142,10 @@ export default function generatePdfReport(
    */
 
   return new Promise(
-    (resolve, reject) => {
+    (
+      resolve,
+      reject
+    ) => {
       const doc =
         new PDFDocument({
           size: 'A4',
@@ -161,7 +165,9 @@ export default function generatePdfReport(
 
       doc.on(
         'data',
-        (chunk: Buffer) => {
+        (
+          chunk: Buffer
+        ) => {
           chunks.push(
             Buffer.from(chunk)
           );
@@ -170,7 +176,9 @@ export default function generatePdfReport(
 
       doc.on(
         'error',
-        (error) => {
+        (
+          error
+        ) => {
           reject(error);
         }
       );
@@ -201,7 +209,9 @@ export default function generatePdfReport(
             );
 
             resolve();
-          } catch (error) {
+          } catch (
+            error
+          ) {
             reject(error);
           }
         }
@@ -319,9 +329,6 @@ export default function generatePdfReport(
        * =================================================
        * DONUT
        * =================================================
-       *
-       * No PDFKit arc().
-       * The ring is constructed from line segments.
        */
 
       function drawDonut(
@@ -340,9 +347,6 @@ export default function generatePdfReport(
             ? total
             : 1;
 
-        /*
-         * Background ring
-         */
         doc
           .lineWidth(lineWidth)
           .strokeColor(
@@ -482,9 +486,6 @@ export default function generatePdfReport(
             segment.value;
         }
 
-        /*
-         * White center
-         */
         doc
           .circle(
             centerX,
@@ -556,17 +557,10 @@ export default function generatePdfReport(
         y: number,
         color: string
       ): void {
-        const labelX =
-          315;
-
-        const barX =
-          390;
-
-        const barWidth =
-          105;
-
-        const barHeight =
-          12;
+        const labelX = 315;
+        const barX = 390;
+        const barWidth = 105;
+        const barHeight = 12;
 
         doc
           .font(
@@ -640,7 +634,7 @@ export default function generatePdfReport(
 
       /*
        * =================================================
-       * TECHNOLOGY ITEM
+       * TECHNOLOGY
        * =================================================
        */
 
@@ -760,10 +754,6 @@ export default function generatePdfReport(
        * =================================================
        */
 
-      /*
-       * HEADER
-       */
-
       if (
         assetExists(
           logoBluPath
@@ -780,20 +770,6 @@ export default function generatePdfReport(
             ],
           }
         );
-      } else {
-        doc
-          .font(
-            'Helvetica-Bold'
-          )
-          .fontSize(12)
-          .fillColor(
-            COLORS.blue
-          )
-          .text(
-            'blu',
-            50,
-            50
-          );
       }
 
       doc
@@ -815,10 +791,6 @@ export default function generatePdfReport(
             align: 'right',
           }
         );
-
-      /*
-       * TITLE
-       */
 
       doc
         .font(
@@ -861,10 +833,6 @@ export default function generatePdfReport(
           50,
           168
         );
-
-      /*
-       * SCENARIO
-       */
 
       drawCard(
         50,
@@ -946,10 +914,6 @@ export default function generatePdfReport(
           }
         );
 
-      /*
-       * TAGS
-       */
-
       if (
         execution.tags.length >
         0
@@ -971,18 +935,9 @@ export default function generatePdfReport(
           );
       }
 
-      /*
-       * METRICS
-       */
-
-      const metricY =
-        325;
-
-      const metricWidth =
-        153;
-
-      const gap =
-        18;
+      const metricY = 325;
+      const metricWidth = 153;
+      const gap = 18;
 
       drawMetricCard(
         50,
@@ -1021,10 +976,6 @@ export default function generatePdfReport(
         ),
         COLORS.red
       );
-
-      /*
-       * SUMMARY
-       */
 
       doc
         .font(
@@ -1100,10 +1051,6 @@ export default function generatePdfReport(
         COLORS.yellow
       );
 
-      /*
-       * ENVIRONMENT
-       */
-
       doc
         .font(
           'Helvetica-Bold'
@@ -1154,166 +1101,59 @@ export default function generatePdfReport(
 
       /*
        * =================================================
-       * PAGE 2
+       * TEST EVIDENCE
        * =================================================
+       *
+       * Satu screenshot = satu evidence step.
        */
 
-      doc.addPage();
+      const screenshots =
+        execution.screenshots;
 
       if (
-        assetExists(
-          logoBluPath
-        )
+        screenshots.length === 0
       ) {
-        doc.image(
-          logoBluPath,
-          50,
-          40,
-          {
-            fit: [
-              65,
-              35,
-            ],
-          }
-        );
-      }
+        doc.addPage();
 
-      doc
-        .font(
-          'Helvetica-Bold'
-        )
-        .fontSize(21)
-        .fillColor(
-          COLORS.dark
-        )
-        .text(
-          'TEST EVIDENCE',
-          50,
-          100
-        );
+        if (
+          assetExists(
+            logoBluPath
+          )
+        ) {
+          doc.image(
+            logoBluPath,
+            50,
+            40,
+            {
+              fit: [
+                65,
+                35,
+              ],
+            }
+          );
+        }
 
-      doc
-        .font(
-          'Helvetica'
-        )
-        .fontSize(9)
-        .fillColor(
-          COLORS.gray
-        )
-        .text(
-          'Visual evidence captured during execution',
-          50,
-          130
-        );
-
-      drawCard(
-        50,
-        160,
-        495,
-        565
-      );
-
-      /*
-       * STEP HEADER
-       */
-
-      doc
-        .font(
-          'Helvetica-Bold'
-        )
-        .fontSize(8)
-        .fillColor(
-          COLORS.gray
-        )
-        .text(
-          'STEP 01',
-          75,
-          185
-        );
-
-      doc
-        .font(
-          'Helvetica-Bold'
-        )
-        .fontSize(11)
-        .fillColor(
-          COLORS.dark
-        )
-        .text(
-          'Click "Yuk Mulai!"',
-          75,
-          202
-        );
-
-      doc
-        .roundedRect(
-          75,
-          225,
-          55,
-          18,
-          9
-        )
-        .fillColor(
-          COLORS.greenLight
-        )
-        .fill();
-
-      doc
-        .font(
-          'Helvetica-Bold'
-        )
-        .fontSize(7)
-        .fillColor(
-          COLORS.green
-        )
-        .text(
-          'PASS',
-          75,
-          231,
-          {
-            width: 55,
-            align: 'center',
-          }
-        );
-
-      /*
-       * SCREENSHOT
-       */
-
-      if (
-        assetExists(
-          execution.screenshotPath
-        )
-      ) {
-        console.log(
-          '[PDF REPORTER] Reading screenshot:',
-          execution.screenshotPath
-        );
-
-        const screenshotBuffer =
-          fs.readFileSync(
-            execution.screenshotPath
+        doc
+          .font(
+            'Helvetica-Bold'
+          )
+          .fontSize(21)
+          .fillColor(
+            COLORS.dark
+          )
+          .text(
+            'TEST EVIDENCE',
+            50,
+            100
           );
 
-        console.log(
-          '[PDF REPORTER] Screenshot size:',
-          screenshotBuffer.length,
-          'bytes'
+        drawCard(
+          50,
+          160,
+          495,
+          150
         );
 
-        doc.image(
-          screenshotBuffer,
-          110,
-          265,
-          {
-            fit: [
-              100,
-              150,
-            ],
-            align: 'center',
-          }
-        );
-      } else {
         doc
           .font(
             'Helvetica'
@@ -1323,19 +1163,243 @@ export default function generatePdfReport(
             COLORS.gray
           )
           .text(
-            'Screenshot evidence not found.',
+            'No screenshot evidence was captured during this execution.',
             75,
-            285
+            205,
+            {
+              width: 440,
+            }
           );
-      }
 
-      drawFooter(2);
+        drawFooter(2);
+      } else {
+        /*
+         * =================================================
+         * DYNAMIC EVIDENCE PAGES
+         * =================================================
+         */
+
+        screenshots.forEach(
+          (
+            screenshotPath,
+            index
+          ) => {
+            doc.addPage();
+
+            if (
+              assetExists(
+                logoBluPath
+              )
+            ) {
+              doc.image(
+                logoBluPath,
+                50,
+                40,
+                {
+                  fit: [
+                    65,
+                    35,
+                  ],
+                }
+              );
+            }
+
+            doc
+              .font(
+                'Helvetica-Bold'
+              )
+              .fontSize(21)
+              .fillColor(
+                COLORS.dark
+              )
+              .text(
+                'TEST EVIDENCE',
+                50,
+                100
+              );
+
+            doc
+              .font(
+                'Helvetica'
+              )
+              .fontSize(9)
+              .fillColor(
+                COLORS.gray
+              )
+              .text(
+                'Visual evidence captured during execution',
+                50,
+                130
+              );
+
+            /*
+             * Evidence card
+             */
+            drawCard(
+              50,
+              160,
+              495,
+              565
+            );
+
+            /*
+             * STEP
+             */
+            doc
+              .font(
+                'Helvetica-Bold'
+              )
+              .fontSize(8)
+              .fillColor(
+                COLORS.gray
+              )
+              .text(
+                `STEP ${String(
+                  index + 1
+                ).padStart(
+                  2,
+                  '0'
+                )}`,
+                75,
+                185
+              );
+
+            /*
+             * Object name
+             */
+            const objectName =
+              path
+                .basename(
+                  screenshotPath,
+                  '.png'
+                );
+
+            doc
+              .font(
+                'Helvetica-Bold'
+              )
+              .fontSize(11)
+              .fillColor(
+                COLORS.dark
+              )
+              .text(
+                objectName,
+                75,
+                202,
+                {
+                  width: 400,
+                }
+              );
+
+            /*
+             * Status.
+             *
+             * Screenshot yang berhasil dibuat
+             * berarti action tersebut berhasil.
+             */
+            doc
+              .roundedRect(
+                75,
+                225,
+                55,
+                18,
+                9
+              )
+              .fillColor(
+                COLORS.greenLight
+              )
+              .fill();
+
+            doc
+              .font(
+                'Helvetica-Bold'
+              )
+              .fontSize(7)
+              .fillColor(
+                COLORS.green
+              )
+              .text(
+                'PASS',
+                75,
+                231,
+                {
+                  width: 55,
+                  align: 'center',
+                }
+              );
+
+            /*
+             * Screenshot
+             */
+            if (
+              assetExists(
+                screenshotPath
+              )
+            ) {
+              console.log(
+                '[PDF REPORTER] Reading screenshot:',
+                screenshotPath
+              );
+
+              const screenshotBuffer =
+                fs.readFileSync(
+                  screenshotPath
+                );
+
+              console.log(
+                '[PDF REPORTER] Screenshot size:',
+                screenshotBuffer.length,
+                'bytes'
+              );
+
+              doc.image(
+                screenshotBuffer,
+                105,
+                265,
+                {
+                  fit: [
+                    385,
+                    425,
+                  ],
+                  align: 'center',
+                  valign: 'center',
+                }
+              );
+            } else {
+              doc
+                .font(
+                  'Helvetica'
+                )
+                .fontSize(10)
+                .fillColor(
+                  COLORS.gray
+                )
+                .text(
+                  'Screenshot evidence not found.',
+                  75,
+                  285
+                );
+            }
+
+            drawFooter(
+              index + 2
+            );
+          }
+        );
+      }
 
       /*
        * =================================================
-       * PAGE 3
+       * EXECUTION ASSESSMENT
        * =================================================
+       *
+       * Page number disesuaikan dengan jumlah
+       * halaman evidence.
        */
+
+      const assessmentPage =
+        screenshots.length +
+        2;
 
       doc.addPage();
 
@@ -1385,10 +1449,6 @@ export default function generatePdfReport(
           130
         );
 
-      /*
-       * RESULT CARD
-       */
-
       drawCard(
         50,
         165,
@@ -1416,7 +1476,7 @@ export default function generatePdfReport(
       const assessment =
         execution.status ===
         'passed'
-          ? 'The smoke test completed successfully. The blu UAT application was launched through the Appium 2 mobile fixture, the configured Android object repository locator was resolved successfully, and the "Yuk Mulai!" interaction completed without failure.'
+          ? 'The smoke test completed successfully. The blu UAT application was launched through the Appium 2 mobile fixture and the configured mobile login flow completed successfully.'
           : 'The test execution did not complete successfully. Review the execution evidence and Playwright HTML report for detailed diagnostics.';
 
       doc
@@ -1436,10 +1496,6 @@ export default function generatePdfReport(
             lineGap: 6,
           }
         );
-
-      /*
-       * PHASE COVERAGE
-       */
 
       doc
         .font(
@@ -1464,7 +1520,7 @@ export default function generatePdfReport(
           COLORS.gray
         )
         .text(
-          'The current smoke test validates that Playwright can create the mobile fixture, connect through WebdriverIO to Appium 2, launch the blu UAT application, resolve the configured Android object repository locator, and execute the initial "Yuk Mulai!" interaction.',
+          'The current smoke test validates the mobile fixture, WebdriverIO connection, Appium 2 driver, Android object repository, and the configured login flow.',
           50,
           425,
           {
@@ -1472,10 +1528,6 @@ export default function generatePdfReport(
             lineGap: 5,
           }
         );
-
-      /*
-       * STACK
-       */
 
       doc
         .font(
@@ -1523,10 +1575,6 @@ export default function generatePdfReport(
         'iOS'
       );
 
-      /*
-       * REPORTING
-       */
-
       doc
         .font(
           'Helvetica-Bold'
@@ -1550,7 +1598,7 @@ export default function generatePdfReport(
           COLORS.gray
         )
         .text(
-          'This PDF provides the human-readable execution summary. The Playwright HTML report remains the detailed technical report for debugging, traces and test-level diagnostics.',
+          'This PDF provides the human-readable execution summary and step-by-step visual evidence. The Playwright HTML report remains the detailed technical report for debugging, traces and test-level diagnostics.',
           50,
           685,
           {
@@ -1559,7 +1607,9 @@ export default function generatePdfReport(
           }
         );
 
-      drawFooter(3);
+      drawFooter(
+        assessmentPage
+      );
 
       /*
        * =================================================

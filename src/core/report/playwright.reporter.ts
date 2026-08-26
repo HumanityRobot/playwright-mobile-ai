@@ -12,7 +12,19 @@ import generatePdfReport, {
   type ExecutionSummary,
 } from './pdf.reporter';
 
-class PlaywrightReporter implements Reporter {
+class PlaywrightReporter
+  implements Reporter
+{
+  private readonly screenshotDirectory =
+    path.resolve(
+      process.cwd(),
+      'reports',
+      'screenshots'
+    );
+
+  private readonly executionStartTime =
+    Date.now();
+
   private execution: ExecutionSummary = {
     passed: 0,
     failed: 0,
@@ -23,7 +35,7 @@ class PlaywrightReporter implements Reporter {
     tags: [],
     status: 'unknown',
 
-    screenshotPath: '',
+    screenshots: [],
   };
 
   onTestEnd(
@@ -31,6 +43,7 @@ class PlaywrightReporter implements Reporter {
     result: TestResult
   ): void {
     console.log('');
+
     console.log(
       '[PDF REPORTER] Test finished:',
       test.title
@@ -42,21 +55,34 @@ class PlaywrightReporter implements Reporter {
     );
 
     /*
-     * Only generate PDF for the target scenario.
+     * Only generate PDF for target scenario.
      */
     if (
       !test.title
         .toLowerCase()
-        .includes('launch blu application')
+        .includes(
+          'login to blu application'
+        )
     ) {
       return;
     }
 
+    /*
+     * =====================================================
+     * RESULT
+     * =====================================================
+     */
+
     this.execution.total++;
 
-    if (result.status === 'passed') {
+    if (
+      result.status === 'passed'
+    ) {
       this.execution.passed++;
-    } else if (result.status === 'failed') {
+    } else if (
+      result.status === 'failed' ||
+      result.status === 'timedOut'
+    ) {
       this.execution.failed++;
     } else if (
       result.status === 'skipped' ||
@@ -66,17 +92,20 @@ class PlaywrightReporter implements Reporter {
     }
 
     /*
-     * Scenario
+     * =====================================================
+     * SCENARIO
+     * =====================================================
      */
+
     this.execution.scenario =
       test.title;
 
     /*
-     * Playwright tags
-     *
-     * We use a safe cast so this remains compatible
-     * with different Playwright type definitions.
+     * =====================================================
+     * TAGS
+     * =====================================================
      */
+
     const testWithTags =
       test as TestCase & {
         tags?: string[];
@@ -86,37 +115,125 @@ class PlaywrightReporter implements Reporter {
       testWithTags.tags ?? [];
 
     /*
-     * Screenshot
+     * =====================================================
+     * STATUS
+     * =====================================================
      */
-    this.execution.screenshotPath =
-      path.resolve(
-        process.cwd(),
-        'reports',
-        'screenshots',
-        'LaunchApp_YukMulai.png'
-      );
 
-    /*
-     * Current status
-     */
-    if (result.status === 'passed') {
+    if (
+      result.status === 'passed'
+    ) {
       this.execution.status =
         'passed';
     } else if (
-      result.status === 'failed'
+      result.status === 'failed' ||
+      result.status === 'timedOut'
     ) {
       this.execution.status =
         'failed';
-    } else {
+    } else if (
+      result.status === 'skipped' ||
+      result.status === 'interrupted'
+    ) {
       this.execution.status =
         'skipped';
+    } else {
+      this.execution.status =
+        'unknown';
     }
+
+    /*
+     * =====================================================
+     * SCREENSHOTS
+     * =====================================================
+     *
+     * Ambil seluruh screenshot yang dibuat
+     * selama execution ini.
+     */
+
+    this.execution.screenshots =
+      this.getExecutionScreenshots();
+
+    console.log(
+      '[PDF REPORTER] Screenshots:',
+      this.execution.screenshots
+    );
+  }
+
+  /**
+   * Get all screenshots generated during
+   * the current test execution.
+   *
+   * Sorted by creation time so the PDF
+   * follows the actual action sequence.
+   */
+  private getExecutionScreenshots(): string[] {
+    if (
+      !fs.existsSync(
+        this.screenshotDirectory
+      )
+    ) {
+      return [];
+    }
+
+    return fs
+      .readdirSync(
+        this.screenshotDirectory
+      )
+      .filter(
+        (fileName) =>
+          fileName
+            .toLowerCase()
+            .endsWith('.png')
+      )
+      .map(
+        (fileName) => {
+          const filePath =
+            path.join(
+              this.screenshotDirectory,
+              fileName
+            );
+
+          const stats =
+            fs.statSync(
+              filePath
+            );
+
+          return {
+            filePath,
+            modifiedTime:
+              stats.mtimeMs,
+          };
+        }
+      )
+      /*
+       * Hanya screenshot yang dibuat
+       * setelah reporter mulai.
+       */
+      .filter(
+        (item) =>
+          item.modifiedTime >=
+          this.executionStartTime
+      )
+      /*
+       * Oldest → newest
+       */
+      .sort(
+        (a, b) =>
+          a.modifiedTime -
+          b.modifiedTime
+      )
+      .map(
+        (item) =>
+          item.filePath
+      );
   }
 
   async onEnd(
     result: FullResult
   ): Promise<void> {
     console.log('');
+
     console.log(
       '[PDF REPORTER] Test run finished'
     );
@@ -127,8 +244,11 @@ class PlaywrightReporter implements Reporter {
     );
 
     /*
-     * No target test
+     * =====================================================
+     * NO TARGET TEST
+     * =====================================================
      */
+
     if (
       this.execution.total === 0
     ) {
@@ -140,31 +260,50 @@ class PlaywrightReporter implements Reporter {
     }
 
     /*
-     * Screenshot check
+     * =====================================================
+     * SCREENSHOT INFO
+     * =====================================================
      */
+
     if (
-      !fs.existsSync(
-        this.execution.screenshotPath
-      )
+      this.execution.screenshots.length ===
+      0
     ) {
       console.log(
-        '[PDF REPORTER] Screenshot not found:',
-        this.execution.screenshotPath
+        '[PDF REPORTER] No screenshots found.'
       );
-
-      /*
-       * We still generate the PDF.
-       * The evidence page will show
-       * "Screenshot not found".
-       */
     } else {
       console.log(
-        '[PDF REPORTER] Screenshot found:',
-        this.execution.screenshotPath
+        '[PDF REPORTER] Screenshot count:',
+        this.execution.screenshots.length
+      );
+
+      this.execution.screenshots.forEach(
+        (
+          screenshot,
+          index
+        ) => {
+          console.log(
+            `[PDF REPORTER] Step ${
+              index + 1
+            }: ${screenshot}`
+          );
+        }
       );
     }
 
+    /*
+     * =====================================================
+     * EXECUTION SUMMARY
+     * =====================================================
+     */
+
     try {
+      console.log(
+        '[PDF REPORTER] Execution summary:',
+        this.execution
+      );
+
       await generatePdfReport(
         this.execution
       );

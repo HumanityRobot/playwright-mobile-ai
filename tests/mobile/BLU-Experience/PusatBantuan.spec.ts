@@ -7,7 +7,5 @@ test(
   },
   async ({ mobile }) => {
     await mobile.click('login_btnYukMulai');
-
-    await mobile.screenshot('LaunchApp_YukMulai');
   }
 );

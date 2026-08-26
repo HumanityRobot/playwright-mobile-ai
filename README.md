@@ -34,3 +34,16 @@ Android Device / Emulator
        |
        v
 blu UAT Application
+
+## Action Mobile
+
+| Action           | Status | Fungsi                          |
+| ---------------- | :----: | ------------------------------- |
+| `click()`        |    ✅   | Klik object + screenshot        |
+| `input()`        |    ✅   | Clear + input + screenshot      |
+| `screenshot()`   |    ✅   | Screenshot manual               |
+| `clear()`        |    ✅   | Clear object + screenshot       |
+| `isVisible()`    |    ✅   | Cek object terlihat             |
+| `waitFor()`      |    ✅   | Tunggu object tampil            |
+| `pressKey()`     |    ✅   | Tekan keyboard key + screenshot |
+| `hideKeyboard()` |    ✅   | Tutup keyboard + screenshot     |
