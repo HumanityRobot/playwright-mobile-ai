@@ -1,11 +1,15 @@
 import { test } from '../../../src/mobile/mobile.fixture';
+import { LoginFlow } from '../../../src/flows/login.flow';
 
 test(
-  'Launch blu application - click Yuk Mulai',
+  'C13790 Pusat Bantuan check Pertanyaan populer',
   {
-    tag: ['@smoke', '@launch'],
+    tag: ['@smoke', '@C13790'],
   },
-  async ({ mobile }) => {
-    await mobile.click('login_btnYukMulai');
+  async ({ login }: { login: LoginFlow }) => {
+    await login.newLogin(
+      '082297271996',
+      'Password123!'
+    );
   }
-);
+);``

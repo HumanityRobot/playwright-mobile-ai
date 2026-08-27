@@ -55,22 +55,15 @@ class PlaywrightReporter
     );
 
     /*
-     * Only generate PDF for target scenario.
-     */
-    if (
-      !test.title
-        .toLowerCase()
-        .includes(
-          'login to blu application'
-        )
-    ) {
-      return;
-    }
-
-    /*
      * =====================================================
      * RESULT
      * =====================================================
+     *
+     * Reporter menerima test apa pun yang
+     * dijalankan oleh Test Runner.
+     *
+     * Tidak ada lagi hardcode:
+     * "login to blu application"
      */
 
     this.execution.total++;
@@ -149,14 +142,23 @@ class PlaywrightReporter
      *
      * Ambil seluruh screenshot yang dibuat
      * selama execution ini.
+     *
+     * Urutan:
+     *
+     * Step 1
+     * Step 2
+     * Step 3
+     * ...
+     *
+     * berdasarkan modified time.
      */
 
     this.execution.screenshots =
       this.getExecutionScreenshots();
 
     console.log(
-      '[PDF REPORTER] Screenshots:',
-      this.execution.screenshots
+      '[PDF REPORTER] Screenshot count:',
+      this.execution.screenshots.length
     );
   }
 
@@ -164,10 +166,19 @@ class PlaywrightReporter
    * Get all screenshots generated during
    * the current test execution.
    *
-   * Sorted by creation time so the PDF
-   * follows the actual action sequence.
+   * Screenshots are sorted:
+   * oldest → newest
+   *
+   * sehingga urutannya mengikuti
+   * execution action.
    */
   private getExecutionScreenshots(): string[] {
+    /*
+     * =====================================================
+     * DIRECTORY CHECK
+     * =====================================================
+     */
+
     if (
       !fs.existsSync(
         this.screenshotDirectory
@@ -176,57 +187,83 @@ class PlaywrightReporter
       return [];
     }
 
-    return fs
-      .readdirSync(
-        this.screenshotDirectory
-      )
-      .filter(
-        (fileName) =>
-          fileName
-            .toLowerCase()
-            .endsWith('.png')
-      )
-      .map(
-        (fileName) => {
-          const filePath =
-            path.join(
-              this.screenshotDirectory,
-              fileName
-            );
+    /*
+     * =====================================================
+     * READ SCREENSHOTS
+     * =====================================================
+     */
 
-          const stats =
-            fs.statSync(
-              filePath
-            );
+    const screenshots =
+      fs
+        .readdirSync(
+          this.screenshotDirectory
+        )
+        .filter(
+          (fileName) =>
+            fileName
+              .toLowerCase()
+              .endsWith('.png')
+        )
+        .map(
+          (fileName) => {
+            const filePath =
+              path.join(
+                this.screenshotDirectory,
+                fileName
+              );
 
-          return {
-            filePath,
-            modifiedTime:
-              stats.mtimeMs,
-          };
-        }
-      )
-      /*
-       * Hanya screenshot yang dibuat
-       * setelah reporter mulai.
-       */
-      .filter(
+            const stats =
+              fs.statSync(
+                filePath
+              );
+
+            return {
+              filePath,
+              modifiedTime:
+                stats.mtimeMs,
+            };
+          }
+        );
+
+    /*
+     * =====================================================
+     * ONLY CURRENT EXECUTION
+     * =====================================================
+     *
+     * Screenshot lama tidak ikut masuk.
+     */
+
+    const currentExecutionScreenshots =
+      screenshots.filter(
         (item) =>
           item.modifiedTime >=
           this.executionStartTime
-      )
-      /*
-       * Oldest → newest
-       */
-      .sort(
-        (a, b) =>
-          a.modifiedTime -
-          b.modifiedTime
-      )
-      .map(
-        (item) =>
-          item.filePath
       );
+
+    /*
+     * =====================================================
+     * SORT
+     * =====================================================
+     *
+     * Oldest → newest
+     */
+
+    currentExecutionScreenshots.sort(
+      (a, b) =>
+        a.modifiedTime -
+        b.modifiedTime
+    );
+
+    /*
+     * =====================================================
+     * RETURN PATH
+     * =====================================================
+     */
+
+    return currentExecutionScreenshots.map(
+      (item) =>
+        item.filePath
+    );
   }
 
   async onEnd(
@@ -245,7 +282,7 @@ class PlaywrightReporter
 
     /*
      * =====================================================
-     * NO TARGET TEST
+     * NO TEST
      * =====================================================
      */
 
@@ -253,7 +290,7 @@ class PlaywrightReporter
       this.execution.total === 0
     ) {
       console.log(
-        '[PDF REPORTER] No target test found. PDF skipped.'
+        '[PDF REPORTER] No test executed. PDF skipped.'
       );
 
       return;

@@ -229,7 +229,7 @@ export default function generatePdfReport(
         gray: '#6B7280',
         gray2: '#9CA3AF',
         border: '#E5E7EB',
-        background: '#F8FAFC',
+        background: '#0c0d0d',
         white: '#FFFFFF',
 
         blue: '#2563EB',

@@ -46,95 +46,81 @@ export class LoginFlow {
     await this.mobile.click(
       'login_btnLoginCTA'
     );
+    
+    // Tap Lanjut
+    await this.mobile.click(
+      'login_btnLoginCTA'
+    );
 
-    // // =====================================================
-    // // OTP BOTTOM SHEET
-    // // =====================================================
+    // =====================================================
+    // OTP BOTTOM SHEET
+    // =====================================================
 
-    // if (
-    //   await this.mobile.isVisible(
-    //     'login_btmSheetOTP'
-    //   )
-    // ) {
-    //   // Select OTP via SMS
-    //   await this.mobile.click(
-    //     'login_btmSheetChooseOTPSMS'
-    //   );
+    if (
+      await this.mobile.isVisible(
+        'login_btmSheetOTP'
+      )
+    ) {
+      // Select OTP via SMS
+      await this.mobile.click(
+        'login_btmSheetChooseOTPSMS'
+      );
+    }
 
-    //   // Tap Lanjut
-    //   await this.mobile.click(
-    //     'login_btmSheetOTPLanjut'
-    //   );
-    // }
+    // =====================================================
+    // OTP
+    // =====================================================
 
-    // // =====================================================
-    // // LOCATION PERMISSION
-    // // =====================================================
+    await this.mobile.input(
+      'login_btnInputOTP',
+      '1234'
+    );
 
-    // if (
-    //   await this.mobile.isVisible(
-    //     'btnPermision'
-    //   )
-    // ) {
-    //   await this.mobile.click(
-    //     'btnPermision'
-    //   );
-    // }
+    // =====================================================
+    // PASSWORD
+    // =====================================================
 
-    // // =====================================================
-    // // OTP
-    // // =====================================================
+    await this.mobile.input(
+      'login_txtPassword',
+      password
+    );
 
-    // await this.mobile.input(
-    //   'login_btnInputOTP',
-    //   '1234'
-    // );
+    // Show password
+    await this.mobile.click(
+      'login_btnEye'
+    );
 
-    // // =====================================================
-    // // PASSWORD
-    // // =====================================================
+    // =====================================================
+    // LOGIN
+    // =====================================================
 
-    // await this.mobile.input(
-    //   'login_txtPassword',
-    //   password
-    // );
+    await this.mobile.click(
+      'login_btnInputPassword'
+    );
 
-    // // Show password
-    // await this.mobile.click(
-    //   'login_btnEye'
-    // );
+    // =====================================================
+    // SECURITY ONBOARDING
+    // =====================================================
 
-    // // =====================================================
-    // // LOGIN
-    // // =====================================================
-
-    // await this.mobile.click(
-    //   'login_btnInputPassword'
-    // );
-
-    // // =====================================================
-    // // SECURITY ONBOARDING
-    // // =====================================================
-
-    // if (
-    //   await this.mobile.isVisible(
-    //     'login_txtSecurityOnboardingTitle'
-    //   )
-    // ) {
-    //   await this.mobile.click(
-    //     'login_btnSecurityOnboarding'
-    //   );
-    // }
+    if (
+      await this.mobile.isVisible(
+        'login_txtSecurityOnboardingTitle'
+      )
+    ) {
+      await this.mobile.click(
+        'login_btnSecurityOnboarding'
+      );
+    }
   }
 
   /**
-   * Pre-login PIN Flow
+   * Pre-login Flow
    *
    * Masuk
    * → PIN keypad
    * → Dashboard / Homepage
    */
-  async pinLogin(
+  async preLogin(
     pin: string
   ): Promise<void> {
     // Tap Masuk pada pre-login

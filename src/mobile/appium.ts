@@ -9,7 +9,7 @@ export async function createAppiumSession(): Promise<Browser> {
         capabilities: {
             platformName: 'Android',
             'appium:automationName': 'UiAutomator2',
-            'appium:udid': '10.171.81.20:5556',
+            'appium:udid': '192.168.1.5:5556',
             'appium:deviceName': 'Android Device',
             'appium:appPackage': 'com.bcadigital.blu.uat',
             'appium:appActivity':
